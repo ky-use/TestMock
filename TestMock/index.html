@@ -1,0 +1,122 @@
+<html lang="ja">
+    <head>
+        <!--<meta charset="utf-8">-->
+        <meta charset="Shift_JIS">
+        <title>お問い合わせフォーム</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    </head>
+    <body>
+        <template id="template">
+           <tr>
+               <td class="CreatedDate"></td>
+               <td class="Content__c"></td>
+           </tr>
+        </template>
+        <template id="templateFile">
+           <tr>
+               <td class="File"></td>
+           </tr>
+        </template>
+        <div class="box_con02">
+            <form id="inquiryForm">
+                <p>投稿一覧</p>
+                <table id="pastInquiry" class="formTable">
+                    <tr><th>登録日</th><th>内容</th></tr>
+                </table>
+            </form>
+        </div>
+    </body>
+</html>
+<script type="text/javascript">
+    // 初期表示処理
+    window.onload = function(){
+        // アクセストークン取得（リフレッシュトークンフロー） Ajax
+        $.ajax({
+            type: 'POST',
+            crossOrigin: true,
+            url: 'https://protocomdev-dev-ed.my.salesforce.com/services/oauth2/token',
+            dataType: 'json',
+            cache :false,
+            data : {"grant_type":"refresh_token","client_id":"3MVG9pRzvMkjMb6nsLsmTx_FqB0rQ9AHEMYt85TrwFp6b3yeP.ta18VQpmha_Ds31fssFdYib4DdLPcLKqtQG", "client_secret":"F864BDD8ADFB8B17EA27F0623CF9039A503A76F9312032654DBFFDB25E87B142","refresh_token":"5Aep861mdLLi91HqFfCpXYtQXRaOgcHsK1gi36_cVHboubUhDFRrSCX9zyL1KBPgaR5qiKjUA54Q0RZhiN_teRI"},
+            success : function (connectData) {
+                var accToken = 'Bearer ' + connectData.access_token;
+                // コンタクトボード明細取得
+                $.ajax({
+                    type: 'GET',
+                    crossOrigin: true,
+                    url: 'https://protocomdev-dev-ed.my.salesforce.com/services/apexrest/PPB_ContactBoardDetail__c/5005j00000QyDbVAAV',
+                    dataType: 'json',
+                    cache :false,
+                    headers: {"Authorization" : accToken},
+                    success : function (res) {
+                        // データを取得できた場合
+                        if(res.length != 0){
+                            //console.log(res);
+                            
+                            // ファイルの中身を格納する配列を定義
+                            let versionDataArray = [];
+                            
+                            // ファイルを取得
+                            for(let i = 0; i < res.length; i++){
+                                if(res[i].contentVersionIdList){
+                                    $.ajax({
+                                        type: 'GET',
+                                        crossOrigin: true,
+                                        url: 'https://protocomdev-dev-ed.my.salesforce.com/services/data/v54.0/sobjects/ContentVersion/' + res[i].contentVersionIdList + '/VersionData',
+                                        cache :false,
+                                        headers: {"Authorization" : accToken},
+                                        xhrFields : {responseType : 'blob'},
+                                        success : function (dlFile) {
+                                            //let versionData = {cvId: res[i].contentVersionIdList, versionData: dlFile};
+                                            //console.log('versionData:' + versionData);
+                                            versionDataArray.push({cvId: res[i].contentVersionIdList, versionData: dlFile});
+                                            if(i == res.length - 1){
+                                                console.log('最後');
+                                                // template要素を取得
+                                                var template = document.getElementById('template');
+                                                // ファイルのtemplate要素を取得
+                                                var templateFile = document.getElementById('templateFile');
+                                                // コンタクトボード明細の数分繰り返し
+                                                for(let j = 0; j < res.length; j++){
+                                                    // template要素の内容を複製
+                                                    var clone = template.content.cloneNode(true);
+                                                    // 複製したtemplate要素にデータを挿入
+                                                    clone.querySelector('.CreatedDate').textContent = res[j].cbd.CreatedDate;
+                                                    clone.querySelector('.Content__c').textContent = res[j].cbd.Content__c;
+                                                    // div#containerの中に追加
+                                                    document.getElementById('pastInquiry').appendChild(clone);
+                                                    //console.log('作成日：' + res[j].cbd.CreatedDate);
+                                                    // ファイルの数分繰り返し
+                                                    for(let k = 0; k < versionDataArray.length; k++){
+                                                        //console.log('versionDataArray:' + versionDataArray[k].cvId);
+                                                        if(res[j].contentVersionIdList == versionDataArray[k].cvId){
+                                                            console.log('入ってる');
+                                                            // template要素の内容を複製
+                                                            var cloneFile = templateFile.content.cloneNode(true);
+                                                            // 複製したtemplate要素にデータを挿入
+                                                            cloneFile.querySelector('.File').textContent = versionDataArray[k].cvId;
+                                                            // div#containerの中に追加
+                                                            document.getElementById('pastInquiry').appendChild(cloneFile);
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    })
+                                }
+                            }
+                        }
+                    },
+                    error : function (data, errorThrown,status) {
+                        
+                    }
+                })
+                
+            },
+            error : function (data, errorThrown,status) {
+            }
+        });
+    }
+
+</script>
